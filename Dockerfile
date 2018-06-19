@@ -4,12 +4,16 @@ FROM node:boron
 RUN mkdir -p /usr/src/eventlistener
 WORKDIR /usr/src/eventlistener
 
-# EH
-ENV EVENTHUBCONNSTRING=
-ENV EVENTHUBPATH=
+# SB
+ENV SERVICEBUSCONNSTRING=
+ENV SERVICEBUSQUEUENAME=
 
 # ACK Logging
 ENV TEAMNAME=
+
+# AI
+ENV APPINSIGHTS_KEY=
+ENV CHALLENGEAPPINSIGHTS_KEY=
 
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied

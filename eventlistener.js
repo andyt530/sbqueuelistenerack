@@ -2,23 +2,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 'use strict';
-var EventHubClient = require('azure-event-hubs').Client;
+var azure = require('azure-sb');
 var Promise = require('bluebird');
 var util = require("util");
 let appInsights = require('applicationinsights');
+let challengeAppInsights = require('applicationinsights');
 var request = require('request');
 
 // Let's validate and spool the ENV VARS
-if (process.env.EVENTHUBCONNSTRING.length == 0) {
-  console.log("The environment variable EVENTHUBCONNSTRING has not been set");
+if (process.env.SERVICEBUSCONNSTRING.length == 0) {
+  console.log("The environment variable SERVICEBUSCONNSTRING has not been set");
 } else {
-  console.log("The environment variable EVENTHUBCONNSTRING is " + process.env.EVENTHUBCONNSTRING);
-}
-
-if (process.env.EVENTHUBPATH.length == 0) {
-  console.log("The environment variable EVENTHUBPATH has not been set");
-} else {
-  console.log("The environment variable EVENTHUBPATH is " + process.env.EVENTHUBPATH);
+  console.log("The environment variable SERVICEBUSCONNSTRING is " + process.env.SERVICEBUSCONNSTRING);
 }
 
 if (process.env.PROCESSENDPOINT.length == 0) {
@@ -27,39 +22,56 @@ if (process.env.PROCESSENDPOINT.length == 0) {
   console.log("The environment variable PROCESSENDPOINT is " + process.env.PROCESSENDPOINT);
 }
 
+
+if (process.env.SERVICEBUSQUEUENAME.length == 0) {
+  console.log("The environment variable SERVICEBUSQUEUENAME has not been set");
+} else {
+  console.log("The environment variable SERVICEBUSQUEUENAME is " + process.env.SERVICEBUSQUEUENAME);
+}
+
+
 if (process.env.TEAMNAME.length == 0) {
   console.log("The environment variable TEAMNAME has not been set");
 } else {
   console.log("The environment variable TEAMNAME is " + process.env.TEAMNAME);
 }
 
+if (process.env.APPINSIGHTS_KEY.length == 0) {
+  console.log("The environment variable APPINSIGHTS_KEY has not been set");
+} else {
+  console.log("The environment variable APPINSIGHTS_KEY is " + process.env.APPINSIGHTS_KEY);
+}
+
+if (process.env.CHALLENGEAPPINSIGHTS_KEY.length == 0) {
+  console.log("The environment variable CHALLENGEAPPINSIGHTS_KEY has not been set");
+} else {
+  console.log("The environment variable CHALLENGEAPPINSIGHTS_KEY is " + process.env.CHALLENGEAPPINSIGHTS_KEY);
+}
+
 // Start
 var source = process.env.SOURCE;
-var connectionString = process.env.EVENTHUBCONNSTRING;
-var eventHubPath = process.env.EVENTHUBPATH;
+var connectionString = process.env.SERVICEBUSCONNSTRING;
+var queueName = process.env.SERVICEBUSQUEUENAME;
 var processendpoint = process.env.PROCESSENDPOINT;
-var insightsKey = "23c6b1ec-ca92-4083-86b6-eba851af9032";
+var insightsKey = process.env.APPINSIGHTS_KEY;
+var challengeInsightsKey = process.env.CHALLENGEAPPINSIGHTS_KEY;
 var teamname = process.env.TEAMNAME;
 
 if (insightsKey != "") {
   appInsights.setup(insightsKey).start();
 }
 
-// The Event Hubs SDK can also be used with an Azure IoT Hub connection string.
-// In that case, the eventHubPath variable is not used and can be left undefined.
+if (challengeInsightsKey != "") {
+  challengeAppInsights.setup(challengeInsightsKey).start();
+}
 
 var body = "";
 
-var printError = function (err) {
-  console.error(err.message);
-};
-
-
-var printEvent = function (ehEvent) {
-  var jj = JSON.stringify(ehEvent.body);
-  console.log('Event Received: ' + jj);
-  var orderId = ehEvent.body.order;
-
+var printEvent = function (event) {
+  var jj = JSON.parse(event.body);
+  console.log('Event Received: ' + event.body);
+  var orderId = jj.order;
+  console.log('Extracted order id is: ' + orderId)
   // Set the headers
   var headers = {
     'Content-Type': 'application/json'
@@ -93,37 +105,47 @@ var printEvent = function (ehEvent) {
     console.log('process endpoint not configured at PROCESSENDPOINT');
   }
 
+  var item = {
+    name: "ServiceBusListener: - Team Name " + teamname,
+    properties: {
+      team: teamname,
+      challenge: "4-eventlistener",
+      type: "servicebus"
+    }
+  };
+
   try {
     let appclient = appInsights.defaultClient;
-    appclient.trackEvent({
-      name: "EventHubListener: - Team Name " + teamname,
-      properties: {
-        team: teamname,
-        challenge: "4-eventlistener",
-        type: "eventhub"
-      }
-    });
-
+    appclient.trackEvent(item);
   } catch (e) {
     console.error("AppInsights " + e.message);
   }
 
+  try {
+    let challengeAppclient = challengeAppInsights.defaultClient;
+    challengeAppclient.trackEvent(item);
+
+  } catch (e) {
+    console.error("ChallengeAppInsights " + e.message);
+  }
 };
 
-var client = EventHubClient.fromConnectionString(connectionString, eventHubPath);
-var receiveAfterTime = Date.now() - 5000;
+function checkForMessages(sbService, queueName, callback) {
+  sbService.receiveQueueMessage(queueName, { isPeekLock: false }, function (err, message) {
+    if (err) {
+      console.log('No messages');
+    } else {
+      callback(message);
+    }
+  });
+}
 
-// Create a receiver per partition
-client.open()
-  .then(client.getPartitionIds.bind(client))
-  .then(function (partitionIds) {
-    return Promise.map(partitionIds, function (partitionId) {
-      return client.createReceiver('$Default', partitionId, {
-        'startAfterTime': receiveAfterTime
-      }).then(function (receiver) {
-        receiver.on('errorReceived', printError);
-        receiver.on('message', printEvent);
-      });
-    });
-  })
-  .catch(printError);
+console.log('Connecting to ' + connectionString + ' queue ' + queueName);
+var client = azure.createServiceBusService(connectionString);
+client.createQueueIfNotExists(queueName, function (err) {
+  if (err) {
+   console.log('Failed to create queue: ', err);
+  } else {
+    setInterval(checkForMessages.bind(null, client, queueName, printEvent), 5000);
+  }
+});

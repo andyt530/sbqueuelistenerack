@@ -15,6 +15,7 @@
   "dependencies": {
     "applicationinsights": "1.0.2",
     "azure-event-hubs": "0.0.8",
+    "azure-sb": "^0.10.6",
     "bluebird": "^3.4.1",
     "npm": "^5.7.1",
     "request": "^2.85.0"
