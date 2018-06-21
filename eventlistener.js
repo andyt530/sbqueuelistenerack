@@ -110,7 +110,8 @@ var printEvent = function (event) {
     properties: {
       team: teamname,
       challenge: "4-eventlistener",
-      type: "servicebus"
+      type: "servicebus",
+      service: "servicebuslistener"
     }
   };
 
@@ -131,9 +132,9 @@ var printEvent = function (event) {
 };
 
 function checkForMessages(sbService, queueName, callback) {
-  sbService.receiveQueueMessage(queueName, { isPeekLock: false }, function (err, message) {
+  sbService.receiveQueueMessage(queueName, { isPeekLock: true }, function (err, message) {
     if (err) {
-      console.log('No messages');
+      //console.log('No messages');
     } else {
       callback(message);
     }
