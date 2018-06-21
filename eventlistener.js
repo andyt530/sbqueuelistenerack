@@ -97,7 +97,7 @@ var printEvent = function (event, sbService) {
 
       // Acknowledge the message if we don't have errors
       if (!error) {
-        serviceBusService.deleteMessage(event, function (deleteError){
+        sbService.deleteMessage(event, function (deleteError){
           if(!deleteError){
               // Message deleted
           }
