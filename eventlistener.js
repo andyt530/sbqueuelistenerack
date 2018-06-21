@@ -67,7 +67,7 @@ if (challengeInsightsKey != "") {
 
 var body = "";
 
-var printEvent = function (event) {
+var printEvent = function (event, sbService) {
   var jj = JSON.parse(event.body);
   console.log('Event Received: ' + event.body);
   var orderId = jj.order;
@@ -97,37 +97,41 @@ var printEvent = function (event) {
 
       // Acknowledge the message if we don't have errors
       if (!error) {
+        serviceBusService.deleteMessage(event, function (deleteError){
+          if(!deleteError){
+              // Message deleted
+          }
+        });
 
+        var item = {
+          name: "ServiceBusListener: - Team Name " + teamname,
+          properties: {
+            team: teamname,
+            challenge: "4-eventlistener",
+            type: "servicebus",
+            service: "servicebuslistener"
+          }
+        };
+      
+        try {
+          let appclient = appInsights.defaultClient;
+          appclient.trackEvent(item);
+        } catch (e) {
+          console.error("AppInsights " + e.message);
+        }
+      
+        try {
+          let challengeAppclient = challengeAppInsights.defaultClient;
+          challengeAppclient.trackEvent(item);
+          
+        } catch (e) {
+          console.error("ChallengeAppInsights " + e.message);
+        }
       }
     });
   } // we have a process endpoint
   else {
     console.log('process endpoint not configured at PROCESSENDPOINT');
-  }
-
-  var item = {
-    name: "ServiceBusListener: - Team Name " + teamname,
-    properties: {
-      team: teamname,
-      challenge: "4-eventlistener",
-      type: "servicebus",
-      service: "servicebuslistener"
-    }
-  };
-
-  try {
-    let appclient = appInsights.defaultClient;
-    appclient.trackEvent(item);
-  } catch (e) {
-    console.error("AppInsights " + e.message);
-  }
-
-  try {
-    let challengeAppclient = challengeAppInsights.defaultClient;
-    challengeAppclient.trackEvent(item);
-
-  } catch (e) {
-    console.error("ChallengeAppInsights " + e.message);
   }
 };
 
@@ -136,7 +140,7 @@ function checkForMessages(sbService, queueName, callback) {
     if (err) {
       //console.log('No messages');
     } else {
-      callback(message);
+      callback(message, sbService);
     }
   });
 }
