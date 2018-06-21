@@ -5,7 +5,6 @@
 var azure = require('azure-sb');
 var Promise = require('bluebird');
 var util = require("util");
-let appInsights = require('applicationinsights');
 let challengeAppInsights = require('applicationinsights');
 var request = require('request');
 
@@ -22,24 +21,16 @@ if (process.env.PROCESSENDPOINT.length == 0) {
   console.log("The environment variable PROCESSENDPOINT is " + process.env.PROCESSENDPOINT);
 }
 
-
 if (process.env.SERVICEBUSQUEUENAME.length == 0) {
   console.log("The environment variable SERVICEBUSQUEUENAME has not been set");
 } else {
   console.log("The environment variable SERVICEBUSQUEUENAME is " + process.env.SERVICEBUSQUEUENAME);
 }
 
-
 if (process.env.TEAMNAME.length == 0) {
   console.log("The environment variable TEAMNAME has not been set");
 } else {
   console.log("The environment variable TEAMNAME is " + process.env.TEAMNAME);
-}
-
-if (process.env.APPINSIGHTS_KEY.length == 0) {
-  console.log("The environment variable APPINSIGHTS_KEY has not been set");
-} else {
-  console.log("The environment variable APPINSIGHTS_KEY is " + process.env.APPINSIGHTS_KEY);
 }
 
 if (process.env.CHALLENGEAPPINSIGHTS_KEY.length == 0) {
@@ -53,19 +44,12 @@ var source = process.env.SOURCE;
 var connectionString = process.env.SERVICEBUSCONNSTRING;
 var queueName = process.env.SERVICEBUSQUEUENAME;
 var processendpoint = process.env.PROCESSENDPOINT;
-var insightsKey = process.env.APPINSIGHTS_KEY;
 var challengeInsightsKey = process.env.CHALLENGEAPPINSIGHTS_KEY;
 var teamname = process.env.TEAMNAME;
-
-if (insightsKey != "") {
-  appInsights.setup(insightsKey).start();
-}
 
 if (challengeInsightsKey != "") {
   challengeAppInsights.setup(challengeInsightsKey).start();
 }
-
-var body = "";
 
 var printEvent = function (event, sbService) {
   var jj = JSON.parse(event.body);
@@ -109,18 +93,13 @@ var printEvent = function (event, sbService) {
             team: teamname,
             challenge: "4-eventlistener",
             type: "servicebus",
-            service: "servicebuslistener"
+            service: "servicebuslistener",
+            orderId: orderId
           }
         };
       
         try {
-          let appclient = appInsights.defaultClient;
-          appclient.trackEvent(item);
-        } catch (e) {
-          console.error("AppInsights " + e.message);
-        }
-      
-        try {
+          console.log("tracking event:" +item.name)
           let challengeAppclient = challengeAppInsights.defaultClient;
           challengeAppclient.trackEvent(item);
           
