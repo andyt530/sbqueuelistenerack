@@ -123,23 +123,32 @@ namespace sbqueuelistenerack
                 var orderId = obj.order.ToString();
                 var orderObject = new { OrderId = orderId };
                 var orderMessage = Newtonsoft.Json.JsonConvert.SerializeObject(orderObject);
+
+
+                var eventTelemetry = new EventTelemetry();
+                eventTelemetry.Name = $"ServiceBusListener: - Team Name {TeamName}";
+                eventTelemetry.Properties.Add("team", TeamName);
+                eventTelemetry.Properties.Add("challenge", "4-eventlistener");
+                eventTelemetry.Properties.Add("type", "servicebus");
+                eventTelemetry.Properties.Add("service", "servicebuslistener");
+                eventTelemetry.Properties.Add("orderId", orderId);
+              
                 var result = await SendRequest(orderMessage);
 
                 if (result)
                 {
+
+                    eventTelemetry.Properties.Add("status", "sent to fulfillment service");
+                    telemetryClient.TrackEvent(eventTelemetry);
+                    challengeTelemetryClient.TrackEvent(eventTelemetry);
+                  
                     // Complete the message so that it is not received again.
                     // This can be done only if the queueClient is created in ReceiveMode.PeekLock mode (which is default).
                     await queueClient.CompleteAsync(message.SystemProperties.LockToken);
                 }
                 else
                 {
-                    var eventTelemetry = new EventTelemetry();
-                    eventTelemetry.Name = $"ServiceBusListener: - Team Name {TeamName}";
-                    eventTelemetry.Properties.Add("team", TeamName);
-                    eventTelemetry.Properties.Add("challenge", "4-eventlistener");
-                    eventTelemetry.Properties.Add("type", "servicebus");
-                    eventTelemetry.Properties.Add("service", "servicebuslistener");
-                    eventTelemetry.Properties.Add("orderId", orderId);
+                    eventTelemetry.Properties.Add("status", "failed to send to fulfillment service");
 
                     telemetryClient.TrackEvent(eventTelemetry);
                     challengeTelemetryClient.TrackEvent(eventTelemetry);
