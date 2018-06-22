@@ -31,11 +31,24 @@ namespace sbqueuelistenerack
         private static readonly HttpClient httpClient = new HttpClient();
 
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             InitEnvVars();
             InitAppInsights();
-            MainAsync().GetAwaiter().GetResult();
+
+            queueClient = new QueueClient(ServiceBusConnectionString, QueueName);
+
+            // Register QueueClient's MessageHandler and receive messages in a loop
+            RegisterOnMessageHandlerAndReceiveMessages();
+
+            Console.WriteLine("======================================================");
+            Console.WriteLine("Listening to messages from Service Bus Queue.");
+            Console.WriteLine("======================================================");
+
+            await Task.Delay(Timeout.Infinite);
+
+            await queueClient.CloseAsync();
+
         }
 
         static void InitEnvVars()
@@ -79,22 +92,6 @@ namespace sbqueuelistenerack
             challengeTelemetryClient = new TelemetryClient(challengeTelemetryConfig);
         }
 
-        static async Task MainAsync()
-        {
-            queueClient = new QueueClient(ServiceBusConnectionString, QueueName);
-
-            Console.WriteLine("======================================================");
-            Console.WriteLine("Press ENTER key to exit after receiving all the messages.");
-            Console.WriteLine("======================================================");
-
-            // Register QueueClient's MessageHandler and receive messages in a loop
-            RegisterOnMessageHandlerAndReceiveMessages();
-
-            Console.Read();
-
-            await queueClient.CloseAsync();
-        }
-
         static void RegisterOnMessageHandlerAndReceiveMessages()
         {
             // Configure the MessageHandler Options in terms of exception handling, number of concurrent messages to deliver etc.
@@ -119,7 +116,7 @@ namespace sbqueuelistenerack
             {
                 // Process the message
                 var body = Encoding.UTF8.GetString(message.Body);
-                dynamic obj = Newtonsoft.Json.JsonConvert.DeserializeObject(body);
+                dynamic obj = Newtonsoft.Json.Linq.JObject.Parse(body);
                 var orderId = obj.order.ToString();
                 var orderObject = new { OrderId = orderId };
                 var orderMessage = Newtonsoft.Json.JsonConvert.SerializeObject(orderObject);
@@ -137,7 +134,7 @@ namespace sbqueuelistenerack
 
                 if (result)
                 {
-
+                    Console.WriteLine($"Send order to fulfillment {orderId}");
                     eventTelemetry.Properties.Add("status", "sent to fulfillment service");
                     telemetryClient.TrackEvent(eventTelemetry);
                     challengeTelemetryClient.TrackEvent(eventTelemetry);
@@ -163,6 +160,7 @@ namespace sbqueuelistenerack
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 telemetryClient.TrackException(ex);
             }
         }
