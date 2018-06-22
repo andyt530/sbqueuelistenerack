@@ -90,7 +90,7 @@ namespace sbqueuelistenerack
             // Register QueueClient's MessageHandler and receive messages in a loop
             RegisterOnMessageHandlerAndReceiveMessages();
 
-            Console.ReadKey();
+            Console.Read();
 
             await queueClient.CloseAsync();
         }
@@ -132,7 +132,7 @@ namespace sbqueuelistenerack
                 eventTelemetry.Properties.Add("type", "servicebus");
                 eventTelemetry.Properties.Add("service", "servicebuslistener");
                 eventTelemetry.Properties.Add("orderId", orderId);
-              
+
                 var result = await SendRequest(orderMessage);
 
                 if (result)
@@ -141,7 +141,7 @@ namespace sbqueuelistenerack
                     eventTelemetry.Properties.Add("status", "sent to fulfillment service");
                     telemetryClient.TrackEvent(eventTelemetry);
                     challengeTelemetryClient.TrackEvent(eventTelemetry);
-                  
+
                     // Complete the message so that it is not received again.
                     // This can be done only if the queueClient is created in ReceiveMode.PeekLock mode (which is default).
                     await queueClient.CompleteAsync(message.SystemProperties.LockToken);
