@@ -66,7 +66,16 @@ namespace sbqueuelistenerack
             }
 
             ChallengeAppInsightsKey = Environment.GetEnvironmentVariable("CHALLENGEAPPINSIGHTS_KEY");
+            if (string.IsNullOrEmpty(ChallengeAppInsightsKey))
+            {
+                throw new ArgumentNullException("CHALLENGEAPPINSIGHTS_KEY is empty");
+            }
+
             AppInsightsKey = Environment.GetEnvironmentVariable("APPINSIGHTS_KEY");
+            if (string.IsNullOrEmpty(AppInsightsKey))
+            {
+                throw new ArgumentNullException("APPINSIGHTS_KEY is empty");
+            }
 
             TeamName = Environment.GetEnvironmentVariable("TEAMNAME");
             if (string.IsNullOrEmpty(TeamName))
@@ -122,7 +131,7 @@ namespace sbqueuelistenerack
                 var eventTelemetry = new EventTelemetry();
                 eventTelemetry.Name = $"ServiceBusListener: - Team Name {TeamName}";
                 eventTelemetry.Properties.Add("team", TeamName);
-                eventTelemetry.Properties.Add("challenge", "4-eventlistener");
+                eventTelemetry.Properties.Add("challenge", "3-eventlistener");
                 eventTelemetry.Properties.Add("type", "servicebus");
                 eventTelemetry.Properties.Add("service", "servicebuslistener");
                 eventTelemetry.Properties.Add("orderId", orderId);
@@ -133,8 +142,6 @@ namespace sbqueuelistenerack
                 {
                     Console.WriteLine($"Send order to fulfillment {orderId}");
                     eventTelemetry.Properties.Add("status", "sent to fulfillment service");
-                    telemetryClient.TrackEvent(eventTelemetry);
-                    challengeTelemetryClient.TrackEvent(eventTelemetry);
 
                     // Complete the message so that it is not received again.
                     // This can be done only if the queueClient is created in ReceiveMode.PeekLock mode (which is default).
@@ -143,13 +150,10 @@ namespace sbqueuelistenerack
                 else
                 {
                     eventTelemetry.Properties.Add("status", "failed to send to fulfillment service");
-                    telemetryClient.TrackEvent(eventTelemetry);
-                    challengeTelemetryClient.TrackEvent(eventTelemetry);
-
                     // This will make the message available again for processing
                     await queueClient.AbandonAsync(message.SystemProperties.LockToken);
                 }
-
+                trackEvent(eventTelemetry);
                 // Note: Use the cancellationToken passed as necessary to determine if the queueClient has already been closed.
                 // If queueClient has already been Closed, you may chose to not call CompleteAsync() or AbandonAsync() etc. calls 
                 // to avoid unnecessary exceptions.
@@ -160,7 +164,14 @@ namespace sbqueuelistenerack
                 telemetryClient.TrackException(ex);
             }
         }
+        static void trackEvent(EventTelemetry eventTelemetry)
+        {
+            eventTelemetry.Context.InstrumentationKey = AppInsightsKey;
+            telemetryClient.TrackEvent(eventTelemetry);
+            eventTelemetry.Context.InstrumentationKey = ChallengeAppInsightsKey;
+            challengeTelemetryClient.TrackEvent(eventTelemetry);
 
+        }
         static Task ExceptionReceivedHandler(ExceptionReceivedEventArgs exceptionReceivedEventArgs)
         {
             Console.WriteLine($"Message handler encountered an exception {exceptionReceivedEventArgs.Exception}.");
