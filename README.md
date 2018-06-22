@@ -9,6 +9,7 @@ The following environment variables need to be passed to the container:
 ### Logging
 ```
 ENV TEAMNAME=[YourTeamName]
+ENV APPINSIGHTS_KEY=[Application Insights Key]
 ENV CHALLENGEAPPINSIGHTS_KEY=[Challenge Application Insights Key] # Given by the proctors
 ```
 ### Service bus

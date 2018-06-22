@@ -1,28 +1,16 @@
-FROM node:boron
+FROM microsoft/dotnet:2.1-sdk AS build-env
+WORKDIR /app
 
-# Create app directory
-RUN mkdir -p /usr/src/eventlistener
-WORKDIR /usr/src/eventlistener
+# Copy csproj and restore as distinct layers
+COPY *.csproj ./
+RUN dotnet restore
 
-# SB
-ENV SERVICEBUSCONNSTRING=
-ENV SERVICEBUSQUEUENAME=
+# Copy everything else and build
+COPY . ./
+RUN dotnet publish -c Release -o out
 
-# ACK Logging
-ENV TEAMNAME=
-
-# AI
-ENV CHALLENGEAPPINSIGHTS_KEY=
-
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
-COPY package*.json ./
-
-# Install app dependencies
-RUN npm install
-
-# Bundle app source
-COPY . .
-
-CMD [ "node", "eventlistener.js" ]
+# Build runtime image
+FROM microsoft/dotnet:2.1-runtime-alpine
+WORKDIR /app
+COPY --from=build-env /app/out .
+ENTRYPOINT ["dotnet", "sbqueuelistenerack.dll"]
