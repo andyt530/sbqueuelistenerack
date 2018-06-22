@@ -83,13 +83,11 @@ namespace sbqueuelistenerack
 
         static void InitAppInsights()
         {
-            var telemetryConfig = TelemetryConfiguration.CreateDefault();
-            telemetryConfig.InstrumentationKey = AppInsightsKey;
-            telemetryClient = new TelemetryClient(telemetryConfig);
+            telemetryClient = new TelemetryClient();
+            telemetryClient.InstrumentationKey = AppInsightsKey;
 
-            var challengeTelemetryConfig = TelemetryConfiguration.CreateDefault();
-            challengeTelemetryConfig.InstrumentationKey = ChallengeAppInsightsKey;
-            challengeTelemetryClient = new TelemetryClient(challengeTelemetryConfig);
+            challengeTelemetryClient = new TelemetryClient();
+            challengeTelemetryClient.InstrumentationKey = ChallengeAppInsightsKey;
         }
 
         static void RegisterOnMessageHandlerAndReceiveMessages()
@@ -121,7 +119,6 @@ namespace sbqueuelistenerack
                 var orderObject = new { OrderId = orderId };
                 var orderMessage = Newtonsoft.Json.JsonConvert.SerializeObject(orderObject);
 
-
                 var eventTelemetry = new EventTelemetry();
                 eventTelemetry.Name = $"ServiceBusListener: - Team Name {TeamName}";
                 eventTelemetry.Properties.Add("team", TeamName);
@@ -146,7 +143,6 @@ namespace sbqueuelistenerack
                 else
                 {
                     eventTelemetry.Properties.Add("status", "failed to send to fulfillment service");
-
                     telemetryClient.TrackEvent(eventTelemetry);
                     challengeTelemetryClient.TrackEvent(eventTelemetry);
 
