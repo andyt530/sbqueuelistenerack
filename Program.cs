@@ -7,7 +7,6 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
 
 namespace sbqueuelistenerack
 {
@@ -92,11 +91,8 @@ namespace sbqueuelistenerack
 
         static void InitAppInsights()
         {
-            telemetryClient = new TelemetryClient();
-            telemetryClient.InstrumentationKey = AppInsightsKey;
-
-            challengeTelemetryClient = new TelemetryClient();
-            challengeTelemetryClient.InstrumentationKey = ChallengeAppInsightsKey;
+            telemetryClient = new TelemetryClient(new TelemetryConfiguration(AppInsightsKey));
+            challengeTelemetryClient = new TelemetryClient(new TelemetryConfiguration(ChallengeAppInsightsKey));
         }
 
         static void RegisterOnMessageHandlerAndReceiveMessages()
@@ -166,10 +162,11 @@ namespace sbqueuelistenerack
         }
         static void trackEvent(EventTelemetry eventTelemetry)
         {
-            eventTelemetry.Context.InstrumentationKey = AppInsightsKey;
+            // Due to a bug in app insights, each telemetry client should send a different event instance otherwise it will be sent to the same app. 
+            var eventTelemetryCopy = (EventTelemetry) eventTelemetry.DeepClone();
+
             telemetryClient.TrackEvent(eventTelemetry);
-            eventTelemetry.Context.InstrumentationKey = ChallengeAppInsightsKey;
-            challengeTelemetryClient.TrackEvent(eventTelemetry);
+            challengeTelemetryClient.TrackEvent(eventTelemetryCopy);
 
         }
         static Task ExceptionReceivedHandler(ExceptionReceivedEventArgs exceptionReceivedEventArgs)
