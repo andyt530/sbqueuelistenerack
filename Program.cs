@@ -125,9 +125,9 @@ namespace sbqueuelistenerack
                 var orderMessage = Newtonsoft.Json.JsonConvert.SerializeObject(orderObject);
 
                 var eventTelemetry = new EventTelemetry();
-                eventTelemetry.Name = $"ServiceBusListener: - Team Name {TeamName}";
+                eventTelemetry.Name = $"ServiceBusListener";
                 eventTelemetry.Properties.Add("team", TeamName);
-                eventTelemetry.Properties.Add("challenge", "3-eventlistener");
+                eventTelemetry.Properties.Add("sequence", "3");
                 eventTelemetry.Properties.Add("type", "servicebus");
                 eventTelemetry.Properties.Add("service", "servicebuslistener");
                 eventTelemetry.Properties.Add("orderId", orderId);
